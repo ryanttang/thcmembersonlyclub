@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { 
+  color-scheme: light dark; 
+}
+
+body { 
+  color: #111827;
+  background-color: #ffffff;
+}
+
+/* Ensure Ant Design components have proper text color */
+.ant-typography {
+  color: inherit;
+}
+
+/* Override any dark text on dark backgrounds */
+.ant-card-body {
+  color: #262626;
+}
+
+.ant-form-item-label > label {
+  color: #262626;
+}
+
+/* Ensure form inputs have visible text */
+.ant-input {
+  color: #262626;
+}
+
+.ant-input::placeholder {
+  color: #8c8c8c;
+}
+
+.ant-input-textarea textarea {
+  color: #262626;
+}
+
+/* Ensure upload text is visible */
+.ant-upload-text,
+.ant-upload-hint {
+  color: #262626;
+}
+
+/* Ensure divider text is visible */
+.ant-divider-inner-text {
+  color: #262626;
+}
+
+/* Ensure all text in cards is visible */
+.ant-card .ant-typography {
+  color: #262626;
+}
+
+/* Ensure buttons have proper text color */
+.ant-btn {
+  color: inherit;
+}
+
+/* Override any potential dark themes */
+.ant-app {
+  color: #262626;
+}

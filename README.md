@@ -1,36 +1,88 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Minimal Events Promotion & Ticketing Site
 
-## Getting Started
+A complete, copy-paste scaffold for a minimal events site. Admin can upload a flyer, set title/date/time/location/ticket URL, and the event appears on the home page as a chronological grid.
 
-First, run the development server:
+## Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Next.js 14** (App Router)
+- **TypeScript**
+- **Tailwind CSS**
+- **Ant Design v5**
+- **Prisma** + SQLite (dev) / Postgres (prod)
+- **Zod** for validation
+- **date-fns** for date formatting
+- **AWS SDK** (S3/R2) for image storage
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Quick Start
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. **Set up environment**
+   ```bash
+   cp env.example .env
+   # Edit .env with your ADMIN_TOKEN
+   ```
 
-## Learn More
+3. **Set up database**
+   ```bash
+   npx prisma migrate dev -n init
+   npx prisma generate
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+4. **Start development server**
+   ```bash
+   npm run dev
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Usage
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Home page** (`/`): View all published events in chronological order
+- **Admin page** (`/admin`): Upload flyers and create new events
 
-## Deploy on Vercel
+## Admin Authentication
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Set `ADMIN_TOKEN` in your `.env` file. Use this token in the admin interface to authenticate uploads and event creation.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Image Storage
+
+- **Development**: Images are stored locally in `/public/uploads`
+- **Production**: Configure S3/R2 credentials in `.env` for cloud storage
+
+## API Endpoints
+
+- `POST /api/upload` - Upload flyer images (requires admin token)
+- `GET /api/events` - Get all published events
+- `POST /api/events` - Create new event (requires admin token)
+
+## Database Schema
+
+The `Event` model includes:
+- Basic event details (title, description, date, time, location)
+- Ticket URL for external ticketing
+- Flyer image URL
+- Publication status
+- Automatic slug generation
+- Timestamps
+
+## Deployment
+
+1. Update `next.config.ts` with your S3/CDN domains
+2. Set production database URL in `.env`
+3. Configure S3/R2 credentials for production image storage
+4. Deploy to Vercel, Netlify, or your preferred platform
+
+## Features
+
+- ✅ Responsive event grid layout
+- ✅ Drag & drop image uploads
+- ✅ Admin authentication
+- ✅ Form validation with Zod
+- ✅ Image optimization with Next.js Image
+- ✅ SQLite for development, Postgres for production
+- ✅ S3/R2 integration for production
+- ✅ TypeScript throughout
+- ✅ Ant Design components
+- ✅ Tailwind CSS styling
