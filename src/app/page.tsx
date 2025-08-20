@@ -152,11 +152,11 @@ export default function HomePage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8 auto-rows-fr">
             {events.map((event, index) => (
               <div 
                 key={event.id} 
-                className="animate-slide-in-up"
+                className="animate-slide-in-up h-full"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <EventCard event={event} />

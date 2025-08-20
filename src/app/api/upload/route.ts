@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
       const urls = await uploadAllSizesToS3(processedImages, baseKey);
       console.log("Images uploaded to S3:", urls);
       return Response.json({ 
-        url: urls.thumbnail, // Return thumbnail as main URL for grid display
+        url: urls.medium, // Return medium size as main URL for better display
         urls, // Include all sizes for different contexts
         message: "Images processed and uploaded successfully"
       });
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
       const urls = await saveAllSizesLocally(processedImages, baseKey);
       console.log("Images saved locally:", urls);
       return Response.json({ 
-        url: urls.thumbnail, // Return thumbnail as main URL for grid display
+        url: urls.medium, // Return medium size as main URL for better display
         urls, // Include all sizes for different contexts
         message: "Images processed and saved successfully"
       });
