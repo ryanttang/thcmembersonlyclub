@@ -2,14 +2,19 @@
 import { useState } from "react";
 import {
   Form, Input, Button, Upload, Typography, Space,
-  DatePicker, TimePicker, Switch, Divider, Card, App
+  DatePicker, TimePicker, Switch, Card, App, Alert
 } from "antd";
 import type { UploadProps } from "antd";
-import { InboxOutlined, PlusOutlined, UploadOutlined, CalendarOutlined, ClockCircleOutlined, EnvironmentOutlined, LinkOutlined, PictureOutlined } from "@ant-design/icons";
+import { InboxOutlined, PlusOutlined, UploadOutlined, CalendarOutlined, ClockCircleOutlined, EnvironmentOutlined, LinkOutlined, PictureOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 
 const { Title, Text } = Typography;
 const { Dragger } = Upload;
+
+// Upload restrictions (matching server-side)
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_IMAGE_DIMENSIONS = 1920; // Max width/height in pixels
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
 
 interface EventFormValues {
   title: string;
@@ -29,11 +34,72 @@ export default function AdminPage() {
   const [flyerUrl, setFlyerUrl] = useState("");
   const [uploading, setUploading] = useState(false);
 
+  // Client-side validation function
+  const validateFile = (file: File): boolean => {
+    // Check file type
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      message.error(`Invalid file type. Only JPEG, PNG, WebP, and GIF images are allowed.`);
+      return false;
+    }
+
+    // Check file size
+    if (file.size > MAX_FILE_SIZE) {
+      message.error(`File too large. Maximum size is ${MAX_FILE_SIZE / (1024 * 1024)}MB.`);
+      return false;
+    }
+
+    return true;
+  };
+
+  // Get image dimensions from file
+  const getImageDimensions = (file: File): Promise<{ width: number; height: number }> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        resolve({ width: img.width, height: img.height });
+      };
+      img.onerror = () => reject(new Error("Failed to load image"));
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+
+
+  // Helper function to validate URL format
+  const isValidImageUrl = (url: string): boolean => {
+    try {
+      const urlObj = new URL(url);
+      return /\.(jpg|jpeg|png|webp|gif)$/i.test(urlObj.pathname);
+    } catch {
+      return false;
+    }
+  };
+
   const uploadProps: UploadProps = {
     name: "file",
     accept: "image/*",
     multiple: false,
-    customRequest: async ({ file, onSuccess }) => {
+    beforeUpload: async (file) => {
+      // Client-side validation
+      if (!validateFile(file)) {
+        return false;
+      }
+
+      // Check dimensions
+      try {
+        const dimensions = await getImageDimensions(file);
+        if (dimensions.width > MAX_IMAGE_DIMENSIONS || dimensions.height > MAX_IMAGE_DIMENSIONS) {
+          message.error(`Image dimensions too large. Maximum dimensions are ${MAX_IMAGE_DIMENSIONS}x${MAX_IMAGE_DIMENSIONS} pixels.`);
+          return false;
+        }
+      } catch {
+        message.error("Failed to validate image dimensions.");
+        return false;
+      }
+
+      return true;
+    },
+    customRequest: async ({ file, onSuccess, onError }) => {
       try {
         setUploading(true);
         const fd = new FormData();
@@ -43,7 +109,12 @@ export default function AdminPage() {
           headers: { "x-admin-token": token },
           body: fd,
         });
-        if (!res.ok) throw new Error("Upload failed");
+        
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(errorText || "Upload failed");
+        }
+        
         const { url } = await res.json();
         setFlyerUrl(url);
         if (onSuccess) {
@@ -53,6 +124,9 @@ export default function AdminPage() {
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Upload error";
         message.error(errorMessage);
+        if (onError) {
+          onError(error as Error);
+        }
       } finally {
         setUploading(false);
       }
@@ -130,6 +204,22 @@ export default function AdminPage() {
             size="small"
           >
             <Space direction="vertical" size={12} className="w-full">
+              {/* Upload Restrictions Info */}
+              <Alert
+                message="Upload Requirements"
+                description={
+                  <div className="text-xs space-y-1">
+                    <div>• Max file size: 5MB</div>
+                    <div>• Max dimensions: 1920×1920 pixels</div>
+                    <div>• Supported formats: JPEG, PNG, WebP, GIF</div>
+                  </div>
+                }
+                type="info"
+                showIcon
+                icon={<InfoCircleOutlined />}
+                className="!text-xs"
+              />
+              
               <Dragger {...uploadProps} disabled={!token} className="!h-24">
                 <div className="p-3 text-center">
                   <p className="ant-upload-drag-icon text-xl text-blue-500 !mb-1">
@@ -138,8 +228,18 @@ export default function AdminPage() {
                   <p className="ant-upload-text text-slate-700 dark:text-slate-200 text-xs">
                     Click or drag image
                   </p>
+                  <p className="ant-upload-hint text-slate-500 dark:text-slate-400 text-xs mt-1">
+                    Max 5MB, 1920×1920px
+                  </p>
                 </div>
               </Dragger>
+              
+              {/* File Info Display */}
+              {uploading && (
+                <div className="text-center">
+                  <Text className="text-blue-500 text-xs">Uploading...</Text>
+                </div>
+              )}
               
               <div className="space-y-2">
                 <Text className="text-slate-600 dark:text-slate-400 text-xs">Or paste URL:</Text>
@@ -149,6 +249,12 @@ export default function AdminPage() {
                   onChange={(e) => setFlyerUrl(e.target.value)}
                   className="!border-slate-200 dark:!border-slate-600"
                   size="small"
+                  onBlur={(e) => {
+                    const url = e.target.value.trim();
+                    if (url && !isValidImageUrl(url)) {
+                      message.warning("URL should point to a valid image file (JPG, PNG, WebP, or GIF)");
+                    }
+                  }}
                 />
               </div>
 
@@ -160,6 +266,11 @@ export default function AdminPage() {
                     alt="Flyer preview" 
                     className="max-h-32 w-full object-cover rounded border border-slate-200 dark:border-slate-600" 
                   />
+                  <div className="mt-2 text-center">
+                    <Text className="text-green-600 dark:text-green-400 text-xs">
+                      ✓ Flyer ready
+                    </Text>
+                  </div>
                 </div>
               )}
             </Space>
@@ -337,6 +448,12 @@ export default function AdminPage() {
                     placeholder="https://example.com/flyer.jpg"
                     className="!border-slate-200 dark:!border-slate-600"
                     size="small"
+                    onBlur={(e) => {
+                      const url = e.target.value.trim();
+                      if (url && !isValidImageUrl(url)) {
+                        message.warning("URL should point to a valid image file (JPG, PNG, WebP, or GIF)");
+                      }
+                    }}
                   />
                 </Form.Item>
 
