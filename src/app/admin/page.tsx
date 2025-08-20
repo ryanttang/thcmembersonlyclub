@@ -2,7 +2,7 @@
 import { useState } from "react";
 import {
   Form, Input, Button, Upload, Typography, Space,
-  DatePicker, TimePicker, Switch, message, Divider, Card
+  DatePicker, TimePicker, Switch, Divider, Card, App
 } from "antd";
 import type { UploadProps } from "antd";
 import { InboxOutlined, PlusOutlined, UploadOutlined, CalendarOutlined, ClockCircleOutlined, EnvironmentOutlined, LinkOutlined, PictureOutlined } from "@ant-design/icons";
@@ -24,6 +24,7 @@ interface EventFormValues {
 }
 
 export default function AdminPage() {
+  const { message } = App.useApp();
   const [token, setToken] = useState("");
   const [flyerUrl, setFlyerUrl] = useState("");
   const [uploading, setUploading] = useState(false);
