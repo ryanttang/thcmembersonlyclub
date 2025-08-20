@@ -1,14 +1,14 @@
-import Image from "next/image";
 import Link from "next/link";
+import Image from "next/image";
 import { CalendarDays, MapPin, Clock, ExternalLink, Ticket } from "lucide-react";
 import { fmtDate } from "@/lib/utils";
-import { Event } from "@prisma/client";
+import { Event } from "@/types/event";
 
 export default function EventCard({ event }: { event: Event }) {
   return (
-    <div className="group relative bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-soft hover:shadow-large transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 dark:border-slate-700 w-full max-w-sm mx-auto h-full flex flex-col card-hover">
+    <div className="group relative bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-soft hover:shadow-large transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 dark:border-slate-700 w-full max-w-sm mx-auto flex flex-col card-hover" style={{ minHeight: '400px' }}>
       {/* Image Container */}
-      <div className="relative aspect-[4/3] overflow-hidden flex-shrink-0">
+      <div className="relative w-full h-48 overflow-hidden flex-shrink-0" style={{ height: '192px' }}>
         <Image
           src={event.flyerUrl}
           alt={event.title}
@@ -16,7 +16,9 @@ export default function EventCard({ event }: { event: Event }) {
           className="object-cover transition-transform duration-500 group-hover:scale-110"
           sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 300px"
           priority={false}
+          quality={85}
         />
+        
         {/* Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
         

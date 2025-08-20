@@ -86,7 +86,9 @@ export async function PUT(req: NextRequest) {
   const parsed = UpdateEventSchema.safeParse(body);
   if (!parsed.success) return new Response("Bad request", { status: 400 });
 
-  const updateData: any = { ...parsed.data };
+  const updateData: Record<string, unknown> = { ...parsed.data };
+  
+  // Convert date string to Date object if present
   if (updateData.date && typeof updateData.date === 'string') {
     updateData.date = new Date(`${updateData.date}T00:00:00Z`);
   }
@@ -98,6 +100,7 @@ export async function PUT(req: NextRequest) {
     });
     return Response.json(event);
   } catch (error) {
+    console.error("Error updating event:", error);
     return new Response("Event not found", { status: 404 });
   }
 }
@@ -119,6 +122,7 @@ export async function DELETE(req: NextRequest) {
     });
     return new Response(null, { status: 204 });
   } catch (error) {
+    console.error("Error deleting event:", error);
     return new Response("Event not found", { status: 404 });
   }
 }

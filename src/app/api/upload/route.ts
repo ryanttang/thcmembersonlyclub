@@ -4,13 +4,10 @@ import { uploadToS3 } from "@/lib/s3";
 import { randomUUID } from "crypto";
 import fs from "fs";
 import path from "path";
+import sharp from "sharp";
+import { IMAGE_CONFIG, AllowedImageType } from "@/config/images";
 
 export const runtime = "nodejs"; // ensure Node APIs for local file writes
-
-// Upload restrictions
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const MAX_IMAGE_DIMENSIONS = 1920; // Max width/height in pixels
-const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
 
 export async function POST(req: NextRequest) {
   const unauthorized = requireAdmin(req);
@@ -21,15 +18,15 @@ export async function POST(req: NextRequest) {
   if (!file) return new Response("No file", { status: 400 });
 
   // Validate file type
-  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+  if (!IMAGE_CONFIG.ALLOWED_TYPES.includes(file.type as AllowedImageType)) {
     return new Response("Invalid file type. Only JPEG, PNG, WebP, and GIF images are allowed.", { 
       status: 400 
     });
   }
 
   // Validate file size
-  if (file.size > MAX_FILE_SIZE) {
-    return new Response(`File too large. Maximum size is ${MAX_FILE_SIZE / (1024 * 1024)}MB.`, { 
+  if (file.size > IMAGE_CONFIG.MAX_FILE_SIZE) {
+    return new Response(`File too large. Maximum size is ${IMAGE_CONFIG.MAX_FILE_SIZE / (1024 * 1024)}MB.`, { 
       status: 400 
     });
   }
@@ -40,9 +37,9 @@ export async function POST(req: NextRequest) {
   // Validate image dimensions
   try {
     const dimensions = await getImageDimensions(buffer);
-    if (dimensions.width > MAX_IMAGE_DIMENSIONS || dimensions.height > MAX_IMAGE_DIMENSIONS) {
+    if (dimensions.width > IMAGE_CONFIG.MAX_DIMENSIONS.width || dimensions.height > IMAGE_CONFIG.MAX_DIMENSIONS.height) {
       return new Response(
-        `Image dimensions too large. Maximum dimensions are ${MAX_IMAGE_DIMENSIONS}x${MAX_IMAGE_DIMENSIONS} pixels.`, 
+        `Image dimensions too large. Maximum dimensions are ${IMAGE_CONFIG.MAX_DIMENSIONS.width}x${IMAGE_CONFIG.MAX_DIMENSIONS.height} pixels.`, 
         { status: 400 }
       );
     }
@@ -50,20 +47,167 @@ export async function POST(req: NextRequest) {
     return new Response("Invalid image file or unable to read dimensions.", { status: 400 });
   }
 
-  const ext = (file.type.split("/")[1] || "bin").replace(/[^a-z0-9]/gi, "");
-  const key = `flyers/${randomUUID()}.${ext}`;
-
-  if (process.env.S3_BUCKET && process.env.S3_ACCESS_KEY_ID) {
-    const url = await uploadToS3(buffer, key, file.type);
-    return Response.json({ url });
+  const baseKey = `flyers/${randomUUID()}`;
+  
+  try {
+    // Process and resize images
+    const processedImages = await processAndResizeImages(buffer);
+    
+    console.log("Image processing completed. Generated sizes:", Object.keys(processedImages));
+    
+    if (process.env.S3_BUCKET && process.env.S3_ACCESS_KEY_ID) {
+      // Upload all sizes to S3
+      const urls = await uploadAllSizesToS3(processedImages, baseKey);
+      console.log("Images uploaded to S3:", urls);
+      return Response.json({ 
+        url: urls.thumbnail, // Return thumbnail as main URL for grid display
+        urls, // Include all sizes for different contexts
+        message: "Images processed and uploaded successfully"
+      });
+    } else {
+      // Save all sizes locally
+      const urls = await saveAllSizesLocally(processedImages, baseKey);
+      console.log("Images saved locally:", urls);
+      return Response.json({ 
+        url: urls.thumbnail, // Return thumbnail as main URL for grid display
+        urls, // Include all sizes for different contexts
+        message: "Images processed and saved successfully"
+      });
+    }
+  } catch (error) {
+    console.error("Error processing images:", error);
+    return new Response("Error processing images", { status: 500 });
   }
+}
 
+// Process and resize images to multiple sizes
+async function processAndResizeImages(buffer: Buffer) {
+  const results: { [key: string]: Buffer } = {};
+  
+  // Get original image dimensions first
+  let originalDimensions: { width: number; height: number };
+  try {
+    originalDimensions = await getImageDimensions(buffer);
+  } catch (error) {
+    console.error("Error getting original dimensions:", error);
+    // Fallback to original buffer if we can't get dimensions
+    results.original = buffer;
+    return results;
+  }
+  
+  // Process each size
+  for (const [sizeName, config] of Object.entries(IMAGE_CONFIG.SIZES)) {
+    try {
+      if ('width' in config && 'height' in config) {
+        // Calculate dimensions while maintaining aspect ratio
+        const { width: targetWidth, height: targetHeight } = config;
+        const originalAspectRatio = originalDimensions.width / originalDimensions.height;
+        const targetAspectRatio = targetWidth / targetHeight;
+        
+        let finalWidth: number = targetWidth;
+        let finalHeight: number = targetHeight;
+        
+        // If original image is smaller than target, don't upscale
+        if (originalDimensions.width <= targetWidth && originalDimensions.height <= targetHeight) {
+          finalWidth = originalDimensions.width;
+          finalHeight = originalDimensions.height;
+        } else {
+          // Maintain aspect ratio while fitting within target dimensions
+          if (originalAspectRatio > targetAspectRatio) {
+            // Original is wider, fit to width
+            finalWidth = targetWidth;
+            finalHeight = Math.round(targetWidth / originalAspectRatio);
+          } else {
+            // Original is taller, fit to height
+            finalHeight = targetHeight;
+            finalWidth = Math.round(targetHeight * originalAspectRatio);
+          }
+        }
+        
+        // Resize image with proper fit strategy
+        const resizedBuffer = await sharp(buffer)
+          .resize(finalWidth, finalHeight, {
+            fit: 'inside', // Use 'inside' to maintain aspect ratio without cropping
+            withoutEnlargement: true // Don't upscale if original is smaller
+          })
+          .jpeg({ 
+            quality: config.quality, 
+            progressive: true,
+            mozjpeg: true // Better compression
+          })
+          .toBuffer();
+        
+        results[sizeName] = resizedBuffer;
+        console.log(`Created ${sizeName} size: ${finalWidth}x${finalHeight}`);
+      } else {
+        // Keep original size but optimize
+        const optimizedBuffer = await sharp(buffer)
+          .jpeg({ 
+            quality: config.quality, 
+            progressive: true,
+            mozjpeg: true
+          })
+          .toBuffer();
+        
+        results[sizeName] = optimizedBuffer;
+        console.log(`Created ${sizeName} size: ${originalDimensions.width}x${originalDimensions.height} (optimized)`);
+      }
+    } catch (error) {
+      console.error(`Error processing ${sizeName} size:`, error);
+      // Fallback to original buffer if resizing fails
+      results[sizeName] = buffer;
+    }
+  }
+  
+  return results;
+}
+
+// Upload all image sizes to S3
+async function uploadAllSizesToS3(processedImages: { [key: string]: Buffer }, baseKey: string) {
+  const urls: { [key: string]: string } = {};
+  
+  for (const [sizeName, buffer] of Object.entries(processedImages)) {
+    const key = `${baseKey}_${sizeName}.jpg`;
+    const url = await uploadToS3(buffer, key, 'image/jpeg');
+    urls[sizeName] = url;
+  }
+  
+  return urls;
+}
+
+// Save all image sizes locally
+async function saveAllSizesLocally(processedImages: { [key: string]: Buffer }, baseKey: string) {
   const uploadsDir = path.join(process.cwd(), "public", "uploads");
-  fs.mkdirSync(uploadsDir, { recursive: true });
-  const filePath = path.join(uploadsDir, `${randomUUID()}.${ext}`);
-  fs.writeFileSync(filePath, buffer);
-  const url = `/uploads/${path.basename(filePath)}`;
-  return Response.json({ url });
+  
+  try {
+    // Ensure uploads directory exists
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+      console.log("Created uploads directory:", uploadsDir);
+    }
+    
+    const urls: { [key: string]: string } = {};
+    
+    for (const [sizeName, buffer] of Object.entries(processedImages)) {
+      try {
+        const fileName = `${baseKey}_${sizeName}.jpg`;
+        const filePath = path.join(uploadsDir, fileName);
+        
+        fs.writeFileSync(filePath, buffer);
+        urls[sizeName] = `/uploads/${fileName}`;
+        
+        console.log(`Saved ${sizeName} image:`, filePath, `(${buffer.length} bytes)`);
+      } catch (error) {
+        console.error(`Error saving ${sizeName} image:`, error);
+        // Continue with other sizes even if one fails
+      }
+    }
+    
+    return urls;
+  } catch (error) {
+    console.error("Error creating uploads directory:", error);
+    throw error;
+  }
 }
 
 // Helper function to get image dimensions

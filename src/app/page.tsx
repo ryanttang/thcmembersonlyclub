@@ -1,29 +1,43 @@
 "use client";
 import { useEffect, useState } from "react";
 import EventCard from "@/components/EventCard";
-import { Event } from "@prisma/client";
+import { Event } from "@/types/event";
 import { CalendarDays, MapPin, Ticket } from "lucide-react";
 
 export default function HomePage() {
   const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchEvents() {
-      try {
-        const response = await fetch("/api/events");
-        if (response.ok) {
-          const data = await response.json();
-          setEvents(data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch events:", error);
-      } finally {
-        setLoading(false);
+  const [loading, setLoading] = useState(false);
+  
+  console.log("HomePage render - loading:", loading, "events:", events);
+  
+  const fetchEvents = async () => {
+    try {
+      setLoading(true);
+      console.log("Fetching events...");
+      const response = await fetch("/api/events");
+      console.log("Response:", response);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Events data:", data);
+        setEvents(data);
+      } else {
+        console.error("Response not ok:", response.status);
       }
+    } catch (error) {
+      console.error("Fetch error:", error);
+    } finally {
+      console.log("Setting loading to false");
+      setLoading(false);
     }
+  };
 
-    fetchEvents();
+  // Auto-load events when component mounts (client-side only)
+  useEffect(() => {
+    // Ensure we're on the client side
+    if (typeof window !== 'undefined') {
+      fetchEvents();
+    }
   }, []);
 
   if (loading) {
@@ -57,11 +71,11 @@ export default function HomePage() {
             </div>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6 lg:gap-8 auto-rows-fr">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8">
             {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
               <div key={i} className="animate-pulse">
-                <div className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-soft h-full flex flex-col">
-                  <div className="aspect-[4/3] bg-gray-200 dark:bg-gray-700 flex-shrink-0"></div>
+                <div className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-soft h-full flex flex-col" style={{ minHeight: '400px' }}>
+                  <div className="w-full h-48 bg-gray-200 dark:bg-gray-700 flex-shrink-0"></div>
                   <div className="p-4 sm:p-6 space-y-2 sm:space-y-3 flex-1 flex flex-col">
                     <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded flex-shrink-0"></div>
                     <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
@@ -105,7 +119,7 @@ export default function HomePage() {
               <span className="group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors">Local Venues</span>
             </div>
             <div className="flex items-center gap-2 group cursor-default">
-              <Ticket className="w-4 h-4 text-green-500 group-hover:text-green-600 transition-colors" />
+              <Ticket className="w-4 h-4 text-green-500 group-hover:text-blue-600 transition-colors" />
               <span className="group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors">Easy Booking</span>
             </div>
           </div>
@@ -138,11 +152,11 @@ export default function HomePage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6 lg:gap-8 auto-rows-fr justify-items-center">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8">
             {events.map((event, index) => (
               <div 
                 key={event.id} 
-                className="animate-slide-in-up w-full max-w-sm"
+                className="animate-slide-in-up"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <EventCard event={event} />

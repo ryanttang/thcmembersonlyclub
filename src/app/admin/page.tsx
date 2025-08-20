@@ -5,8 +5,10 @@ import {
   DatePicker, TimePicker, Switch, Card, App, Alert, Table, Modal, Popconfirm, Tag
 } from "antd";
 import type { UploadProps } from "antd";
-import { InboxOutlined, PlusOutlined, UploadOutlined, CalendarOutlined, ClockCircleOutlined, EnvironmentOutlined, LinkOutlined, PictureOutlined, InfoCircleOutlined, EditOutlined, DeleteOutlined, EyeOutlined, EyeInvisibleOutlined } from "@ant-design/icons";
+import type { Key } from "react";
+import { InboxOutlined, PlusOutlined, UploadOutlined, CalendarOutlined, ClockCircleOutlined, EnvironmentOutlined, LinkOutlined, PictureOutlined, InfoCircleOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
+import ResponsiveImage from "@/components/ResponsiveImage";
 
 const { Title, Text } = Typography;
 const { Dragger } = Upload;
@@ -49,6 +51,8 @@ export default function AdminPage() {
   const [token, setToken] = useState("");
   const [flyerUrl, setFlyerUrl] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [uploadedImages, setUploadedImages] = useState<{ [key: string]: string } | null>(null);
+  const [selectedSize, setSelectedSize] = useState<string>('thumbnail');
   const [events, setEvents] = useState<Event[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(false);
@@ -259,6 +263,10 @@ export default function AdminPage() {
     accept: "image/*",
     multiple: false,
     beforeUpload: async (file) => {
+      // Clear previous uploads when starting a new one
+      setUploadedImages(null);
+      setSelectedSize('thumbnail');
+      
       // Client-side validation
       if (!validateFile(file)) {
         return false;
@@ -294,8 +302,10 @@ export default function AdminPage() {
           throw new Error(errorText || "Upload failed");
         }
         
-        const { url } = await res.json();
+        const { url, urls } = await res.json();
         setFlyerUrl(url);
+        setUploadedImages(urls);
+        setSelectedSize('thumbnail'); // Default to thumbnail
         if (onSuccess) {
           onSuccess({ url }, new XMLHttpRequest());
         }
@@ -329,7 +339,7 @@ export default function AdminPage() {
           endTime: values.endTime ? values.endTime.format("h:mm A") : null,
           location: values.location,
           ticketUrl: values.ticketUrl,
-          flyerUrl: flyerUrl || values.flyerUrl,
+          flyerUrl: uploadedImages ? uploadedImages[selectedSize] || flyerUrl : flyerUrl || values.flyerUrl,
           isPublished: values.isPublished ?? true,
         }),
       });
@@ -337,6 +347,8 @@ export default function AdminPage() {
       message.success("Event created successfully!");
       // Reset form and refresh events
       setFlyerUrl("");
+      setUploadedImages(null);
+      setSelectedSize('thumbnail');
       // Reset the create form
       if (createForm) {
         createForm.resetFields();
@@ -441,26 +453,35 @@ export default function AdminPage() {
       render: (url: string) => (
         url ? (
           <div className="flex justify-center">
-            <img 
-              src={url} 
-              alt="Event flyer" 
-              className="h-12 w-12 object-cover rounded border border-slate-200 dark:border-slate-600 cursor-pointer hover:opacity-80 transition-opacity"
+            <div 
+              className="relative h-12 w-12 cursor-pointer hover:opacity-80 transition-opacity"
               onClick={() => {
-                const modal = Modal.info({
+                Modal.info({
                   title: "Event Flyer",
                   content: (
                     <div className="text-center">
-                      <img 
-                        src={url} 
-                        alt="Event flyer" 
-                        className="max-h-96 max-w-full object-contain rounded" 
-                      />
+                      <div className="relative max-h-96 w-full">
+                        <ResponsiveImage 
+                          src={url} 
+                          alt="Event flyer" 
+                          width={600}
+                          height={400}
+                          className="max-h-96 max-w-full object-contain rounded" 
+                        />
+                      </div>
                     </div>
                   ),
                   width: 600,
                 });
               }}
-            />
+            >
+              <ResponsiveImage 
+                src={url} 
+                alt="Event flyer" 
+                fill
+                className="object-cover rounded border border-slate-200 dark:border-slate-600"
+              />
+            </div>
           </div>
         ) : (
           <div className="text-slate-400 text-center text-xs">No flyer</div>
@@ -515,13 +536,13 @@ export default function AdminPage() {
         { text: "Published", value: true },
         { text: "Draft", value: false },
       ],
-      onFilter: (value: any, record: Event) => record.isPublished === value,
+      onFilter: (value: boolean | Key, record: Event) => record.isPublished === Boolean(value),
       width: 120,
     },
     {
       title: "Actions",
       key: "actions",
-      render: (_: any, record: Event) => (
+      render: (_: unknown, record: Event) => (
         <Space size="small">
           <Button
             type="text"
@@ -719,6 +740,7 @@ export default function AdminPage() {
                     <div>• Max file size: 5MB</div>
                     <div>• Max dimensions: 1920×1920 pixels</div>
                     <div>• Supported formats: JPEG, PNG, WebP, GIF</div>
+                    <div>• Auto-generates: Thumbnail (300×300), Medium (600×600), Large (1200×1200)</div>
                   </div>
                 }
                 type="info"
@@ -753,7 +775,14 @@ export default function AdminPage() {
                 <Input
                   placeholder="https://example.com/flyer.jpg"
                   value={flyerUrl}
-                  onChange={(e) => setFlyerUrl(e.target.value)}
+                  onChange={(e) => {
+                    setFlyerUrl(e.target.value);
+                    // Clear uploaded images when manually entering URL
+                    if (e.target.value.trim()) {
+                      setUploadedImages(null);
+                      setSelectedSize('thumbnail');
+                    }
+                  }}
                   className="!border-slate-200 dark:!border-slate-600"
                   size="small"
                   onBlur={(e) => {
@@ -765,18 +794,63 @@ export default function AdminPage() {
                 />
               </div>
 
-              {flyerUrl && (
+              {/* Image Preview with Size Selection */}
+              {(flyerUrl || uploadedImages) && (
                 <div className="mt-2">
                   <Text className="text-slate-600 dark:text-slate-400 text-xs block mb-1">Preview:</Text>
-                  <img 
-                    src={flyerUrl} 
-                    alt="Flyer preview" 
-                    className="max-h-32 w-full object-cover rounded border border-slate-200 dark:border-slate-600" 
-                  />
+                  
+                  {/* Size Selection */}
+                  {uploadedImages && (
+                    <div className="mb-2">
+                      <Text className="text-slate-600 dark:text-slate-400 text-xs block mb-1">Select Size:</Text>
+                      <div className="flex gap-1 flex-wrap">
+                        {Object.entries(uploadedImages).map(([size, url]) => (
+                          <button
+                            key={size}
+                            type="button"
+                            onClick={() => setSelectedSize(size)}
+                            className={`px-2 py-1 text-xs rounded border transition-colors ${
+                              selectedSize === size
+                                ? 'bg-blue-500 text-white border-blue-500'
+                                : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600'
+                            }`}
+                          >
+                            {size.charAt(0).toUpperCase() + size.slice(1)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Image Display */}
+                  <div className="relative h-32 w-full">
+                    <ResponsiveImage 
+                      src={uploadedImages ? uploadedImages[selectedSize] : flyerUrl} 
+                      alt="Flyer preview" 
+                      fill
+                      className="object-cover rounded border border-slate-200 dark:border-slate-600" 
+                    />
+                  </div>
+                  
+                  {/* Status Message */}
                   <div className="mt-2 text-center">
-                    <Text className="text-green-600 dark:text-green-400 text-xs">
-                      ✓ Flyer ready
-                    </Text>
+                    {uploadedImages ? (
+                      <div className="space-y-1">
+                        <Text className="text-green-600 dark:text-green-400 text-xs block">
+                          ✓ Flyer uploaded successfully!
+                        </Text>
+                        <Text className="text-blue-600 dark:text-blue-400 text-xs block">
+                          Selected: {selectedSize.charAt(0).toUpperCase() + selectedSize.slice(1)} size
+                        </Text>
+                        <Text className="text-slate-500 dark:text-slate-400 text-xs block">
+                          All sizes generated for optimal display
+                        </Text>
+                      </div>
+                    ) : (
+                      <Text className="text-green-600 dark:text-green-400 text-xs">
+                        ✓ Flyer ready
+                      </Text>
+                    )}
                   </div>
                 </div>
               )}
@@ -951,8 +1025,15 @@ export default function AdminPage() {
                   className="!mb-2"
                 >
                   <Input 
-                    value={flyerUrl} 
-                    onChange={(e) => setFlyerUrl(e.target.value)}
+                    value={uploadedImages ? uploadedImages[selectedSize] : flyerUrl} 
+                    onChange={(e) => {
+                      setFlyerUrl(e.target.value);
+                      // Clear uploaded images when manually entering URL
+                      if (e.target.value.trim()) {
+                        setUploadedImages(null);
+                        setSelectedSize('thumbnail');
+                      }
+                    }}
                     placeholder="https://example.com/flyer.jpg"
                     className="!border-slate-200 dark:!border-slate-600"
                     size="small"
@@ -960,9 +1041,9 @@ export default function AdminPage() {
                       const url = e.target.value.trim();
                       if (url && !isValidImageUrl(url)) {
                         message.warning("URL should point to a valid image file (JPG, PNG, WebP, or GIF)");
-                    }
-                  }}
-                />
+                      }
+                    }}
+                  />
                 </Form.Item>
 
                 <Form.Item 
@@ -1114,7 +1195,25 @@ export default function AdminPage() {
               label="Flyer URL" 
               name="flyerUrl"
             >
-              <Input placeholder="https://example.com/flyer.jpg" />
+              <Input 
+                placeholder="https://example.com/flyer.jpg"
+                value={editingEvent?.flyerUrl || ''}
+                onChange={(e) => {
+                  // Update the editing event's flyer URL
+                  if (editingEvent) {
+                    setEditingEvent({
+                      ...editingEvent,
+                      flyerUrl: e.target.value
+                    });
+                  }
+                }}
+                onBlur={(e) => {
+                  const url = e.target.value.trim();
+                  if (url && !isValidImageUrl(url)) {
+                    message.warning("URL should point to a valid image file (JPG, PNG, WebP, or GIF)");
+                  }
+                }}
+              />
             </Form.Item>
 
             <Form.Item 
@@ -1130,15 +1229,15 @@ export default function AdminPage() {
           <Form.Item label="Flyer Preview">
             <div className="flex justify-center">
               {editingEvent?.flyerUrl ? (
-                <img 
-                  src={editingEvent.flyerUrl} 
-                  alt="Event flyer" 
-                  className="max-h-48 max-w-full object-contain rounded border border-slate-200 dark:border-slate-600" 
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                  }}
-                />
+                <div className="relative max-h-48 w-full">
+                  <ResponsiveImage 
+                    src={editingEvent.flyerUrl} 
+                    alt="Event flyer" 
+                    width={400}
+                    height={192}
+                    className="max-h-48 max-w-full object-contain rounded border border-slate-200 dark:border-slate-600" 
+                  />
+                </div>
               ) : (
                 <div className="text-slate-400 text-center py-8">
                   No flyer uploaded

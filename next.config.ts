@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'thcmembersonlyclub.s3.amazonaws.com' },
       { protocol: 'https', hostname: '*.s3.amazonaws.com' },
     ],
+    qualities: [25, 50, 75, 85, 100],
   },
 };
 
