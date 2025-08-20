@@ -2,13 +2,13 @@
 import { useState } from "react";
 import {
   Form, Input, Button, Upload, Typography, Space,
-  DatePicker, TimePicker, Switch, message, Divider
+  DatePicker, TimePicker, Switch, message, Divider, Card
 } from "antd";
 import type { UploadProps } from "antd";
-import { InboxOutlined } from "@ant-design/icons";
+import { InboxOutlined, PlusOutlined, UploadOutlined, CalendarOutlined, ClockCircleOutlined, EnvironmentOutlined, LinkOutlined, PictureOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const { Dragger } = Upload;
 
 interface EventFormValues {
@@ -48,7 +48,7 @@ export default function AdminPage() {
         if (onSuccess) {
           onSuccess({ url }, new XMLHttpRequest());
         }
-        message.success("Flyer uploaded");
+        message.success("Flyer uploaded successfully!");
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Upload error";
         message.error(errorMessage);
@@ -80,7 +80,7 @@ export default function AdminPage() {
         }),
       });
       if (!res.ok) throw new Error("Create failed");
-      message.success("Event created");
+      message.success("Event created successfully!");
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Error creating event";
       message.error(errorMessage);
@@ -88,70 +88,299 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-10">
-      <Space direction="vertical" size={16} style={{ width: "100%" }}>
-        <Title level={3}>Admin — New Event</Title>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 p-4">
+      <div className="max-w-7xl mx-auto">
+        {/* Compact Header */}
+        <div className="mb-4 text-center">
+          <Title level={3} className="!mb-1 !text-slate-800 dark:!text-slate-100">
+            Event Management
+          </Title>
+          <Text className="text-slate-600 dark:text-slate-400 text-sm">
+            Create and manage your events with ease
+          </Text>
+        </div>
 
-        <Input.Password
-          placeholder="Admin Token (ADMIN_TOKEN)"
-          value={token}
-          onChange={(e) => setToken(e.target.value)}
-        />
-
-        <Divider orientation="left">1) Upload Flyer</Divider>
-        <Dragger {...uploadProps} disabled={!token}>
-          <p className="ant-upload-drag-icon">
-            <InboxOutlined />
-          </p>
-          <p className="ant-upload-text">Click or drag image to upload</p>
-          <p className="ant-upload-hint">PNG/JPG, local or S3 depending on env</p>
-        </Dragger>
-        <Input
-          placeholder="Or paste flyer URL"
-          value={flyerUrl}
-          onChange={(e) => setFlyerUrl(e.target.value)}
-        />
-        {flyerUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={flyerUrl} alt="preview" style={{ maxHeight: 320, borderRadius: 12 }} />
-        )}
-
-        <Divider orientation="left">2) Create Event</Divider>
-        <Form layout="vertical" onFinish={onFinish} initialValues={{ isPublished: true }}>
-          <Form.Item label="Title" name="title" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item label="Description" name="description">
-            <Input.TextArea rows={3} />
-          </Form.Item>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <Form.Item label="Date" name="date" rules={[{ required: true }]}> 
-              <DatePicker />
-            </Form.Item>
-            <Form.Item label="Start Time" name="startTime">
-              <TimePicker use12Hours format="h:mm A" />
-            </Form.Item>
-            <Form.Item label="End Time" name="endTime">
-              <TimePicker use12Hours format="h:mm A" />
-            </Form.Item>
+        {/* Admin Token - Compact */}
+        <Card className="mb-4 shadow-sm border-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <Text strong className="text-slate-700 dark:text-slate-200 text-sm">Admin Token</Text>
           </div>
-          <Form.Item label="Location" name="location" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item label="Ticket URL" name="ticketUrl" rules={[{ required: true, type: "url" }]}>
-            <Input placeholder="https://..." />
-          </Form.Item>
-          <Form.Item label="Flyer URL" name="flyerUrl">
-            <Input value={flyerUrl} onChange={(e)=>setFlyerUrl(e.target.value)} />
-          </Form.Item>
-          <Form.Item label="Published" name="isPublished" valuePropName="checked">
-            <Switch defaultChecked />
-          </Form.Item>
-          <Form.Item>
-            <Button type="primary" htmlType="submit" loading={uploading}>Create Event</Button>
-          </Form.Item>
-        </Form>
-      </Space>
-    </main>
+          <Input.Password
+            placeholder="Enter your admin token"
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            className="!border-slate-200 dark:!border-slate-600 !bg-white dark:!bg-slate-700"
+            size="middle"
+          />
+        </Card>
+
+        {/* Main Content Grid - 3 Columns */}
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
+          {/* Upload Section - Left Column */}
+          <Card 
+            title={
+              <div className="flex items-center gap-2 text-sm">
+                <UploadOutlined className="text-blue-500" />
+                <span>Upload Flyer</span>
+              </div>
+            }
+            className="shadow-sm border-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm"
+            size="small"
+          >
+            <Space direction="vertical" size={12} className="w-full">
+              <Dragger {...uploadProps} disabled={!token} className="!h-24">
+                <div className="p-3 text-center">
+                  <p className="ant-upload-drag-icon text-xl text-blue-500 !mb-1">
+                    <InboxOutlined />
+                  </p>
+                  <p className="ant-upload-text text-slate-700 dark:text-slate-200 text-xs">
+                    Click or drag image
+                  </p>
+                </div>
+              </Dragger>
+              
+              <div className="space-y-2">
+                <Text className="text-slate-600 dark:text-slate-400 text-xs">Or paste URL:</Text>
+                <Input
+                  placeholder="https://example.com/flyer.jpg"
+                  value={flyerUrl}
+                  onChange={(e) => setFlyerUrl(e.target.value)}
+                  className="!border-slate-200 dark:!border-slate-600"
+                  size="small"
+                />
+              </div>
+
+              {flyerUrl && (
+                <div className="mt-2">
+                  <Text className="text-slate-600 dark:text-slate-400 text-xs block mb-1">Preview:</Text>
+                  <img 
+                    src={flyerUrl} 
+                    alt="Flyer preview" 
+                    className="max-h-32 w-full object-cover rounded border border-slate-200 dark:border-slate-600" 
+                  />
+                </div>
+              )}
+            </Space>
+          </Card>
+
+          {/* Event Form - Middle Column */}
+          <Card 
+            title={
+              <div className="flex items-center gap-2 text-sm">
+                <PlusOutlined className="text-green-500" />
+                <span>Event Details</span>
+              </div>
+            }
+            className="shadow-sm border-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm lg:col-span-2"
+            size="small"
+          >
+            <Form 
+              layout="vertical" 
+              onFinish={onFinish} 
+              initialValues={{ isPublished: true }}
+              className="space-y-3"
+              size="small"
+            >
+              {/* Title and Description Row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <Form.Item 
+                  label={
+                    <div className="flex items-center gap-1">
+                      <span className="text-slate-700 dark:text-slate-200 text-xs">Title</span>
+                      <span className="text-red-500">*</span>
+                    </div>
+                  } 
+                  name="title" 
+                  rules={[{ required: true, message: 'Required' }]}
+                  className="!mb-2"
+                >
+                  <Input 
+                    placeholder="Event title"
+                    className="!border-slate-200 dark:!border-slate-600"
+                    size="small"
+                  />
+                </Form.Item>
+
+                <Form.Item 
+                  label={
+                    <div className="flex items-center gap-1">
+                      <span className="text-slate-700 dark:text-slate-200 text-xs">Description</span>
+                    </div>
+                  } 
+                  name="description"
+                  className="!mb-2"
+                >
+                  <Input.TextArea 
+                    rows={2} 
+                    placeholder="Brief description..."
+                    className="!border-slate-200 dark:!border-slate-600"
+                    size="small"
+                  />
+                </Form.Item>
+              </div>
+
+              {/* Date and Time Row */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <Form.Item 
+                  label={
+                    <div className="flex items-center gap-1">
+                      <CalendarOutlined className="text-blue-500 text-xs" />
+                      <span className="text-slate-700 dark:text-slate-200 text-xs">Date</span>
+                      <span className="text-red-500">*</span>
+                    </div>
+                  } 
+                  name="date" 
+                  rules={[{ required: true, message: 'Required' }]}
+                  className="!mb-2"
+                >
+                  <DatePicker 
+                    className="w-full !border-slate-200 dark:!border-slate-600"
+                    size="small"
+                  />
+                </Form.Item>
+
+                <Form.Item 
+                  label={
+                    <div className="flex items-center gap-1">
+                      <ClockCircleOutlined className="text-green-500 text-xs" />
+                      <span className="text-slate-200 text-xs">Start</span>
+                    </div>
+                  } 
+                  name="startTime"
+                  className="!mb-2"
+                >
+                  <TimePicker 
+                    use12Hours 
+                    format="h:mm A"
+                    className="w-full !border-slate-200 dark:!border-slate-600"
+                    size="small"
+                  />
+                </Form.Item>
+
+                <Form.Item 
+                  label={
+                    <div className="flex items-center gap-1">
+                      <ClockCircleOutlined className="text-red-500 text-xs" />
+                      <span className="text-slate-200 text-xs">End</span>
+                    </div>
+                  } 
+                  name="endTime"
+                  className="!mb-2"
+                >
+                  <TimePicker 
+                    use12Hours 
+                    format="h:mm A"
+                    className="w-full !border-slate-200 dark:!border-slate-600"
+                    size="small"
+                  />
+                </Form.Item>
+              </div>
+
+              {/* Location and Ticket URL Row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <Form.Item 
+                  label={
+                    <div className="flex items-center gap-1">
+                      <EnvironmentOutlined className="text-purple-500 text-xs" />
+                      <span className="text-slate-700 dark:text-slate-200 text-xs">Location</span>
+                      <span className="text-red-500">*</span>
+                    </div>
+                  } 
+                  name="location" 
+                  rules={[{ required: true, message: 'Required' }]}
+                  className="!mb-2"
+                >
+                  <Input 
+                    placeholder="Event location"
+                    className="!border-slate-200 dark:!border-slate-600"
+                    size="small"
+                  />
+                </Form.Item>
+
+                <Form.Item 
+                  label={
+                    <div className="flex items-center gap-1">
+                      <LinkOutlined className="text-orange-500 text-xs" />
+                      <span className="text-slate-700 dark:text-slate-200 text-xs">Ticket URL</span>
+                      <span className="text-red-500">*</span>
+                    </div>
+                  } 
+                  name="ticketUrl" 
+                  rules={[{ required: true, type: "url", message: 'Valid URL required' }]}
+                  className="!mb-2"
+                >
+                  <Input 
+                    placeholder="https://tickets.example.com"
+                    className="!border-slate-200 dark:!border-slate-600"
+                    size="small"
+                  />
+                </Form.Item>
+              </div>
+
+              {/* Flyer URL and Published Row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
+                <Form.Item 
+                  label={
+                    <div className="flex items-center gap-1">
+                      <PictureOutlined className="text-pink-500 text-xs" />
+                      <span className="text-slate-700 dark:text-slate-200 text-xs">Flyer URL</span>
+                    </div>
+                  } 
+                  name="flyerUrl"
+                  className="!mb-2"
+                >
+                  <Input 
+                    value={flyerUrl} 
+                    onChange={(e) => setFlyerUrl(e.target.value)}
+                    placeholder="https://example.com/flyer.jpg"
+                    className="!border-slate-200 dark:!border-slate-600"
+                    size="small"
+                  />
+                </Form.Item>
+
+                <Form.Item 
+                  label={
+                    <div className="flex items-center gap-1">
+                      <span className="text-slate-700 dark:text-slate-200 text-xs">Published</span>
+                    </div>
+                  } 
+                  name="isPublished" 
+                  valuePropName="checked"
+                  className="!mb-2"
+                >
+                  <Switch 
+                    defaultChecked 
+                    className="!bg-slate-200 dark:!bg-slate-600"
+                    size="small"
+                  />
+                </Form.Item>
+              </div>
+
+              {/* Submit Button */}
+              <Form.Item className="!mb-0 !mt-4">
+                <Button 
+                  type="primary" 
+                  htmlType="submit" 
+                  loading={uploading}
+                  size="middle"
+                  className="w-full !bg-blue-500 hover:!bg-blue-600 !border-0 !shadow-md hover:!shadow-lg transition-all duration-200"
+                  icon={<PlusOutlined />}
+                >
+                  {uploading ? 'Creating...' : 'Create Event'}
+                </Button>
+              </Form.Item>
+            </Form>
+          </Card>
+        </div>
+
+        {/* Compact Footer */}
+        <div className="mt-4 text-center">
+          <Text className="text-slate-500 dark:text-slate-400 text-xs">
+            All events are automatically saved and can be managed from the admin dashboard
+          </Text>
+        </div>
+      </div>
+    </div>
   );
 }
