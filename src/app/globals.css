@@ -211,3 +211,94 @@ body {
   animation: float 6s ease-in-out infinite;
   animation-delay: 3s;
 }
+
+/* Card sizing utilities */
+.card-container {
+  width: 100%;
+  max-width: 24rem; /* 384px - equivalent to max-w-sm */
+  margin: 0 auto;
+}
+
+.card-image {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+}
+
+/* Responsive grid improvements */
+.grid-auto-fit {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.grid-auto-fill {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+/* Prevent text overflow */
+.text-ellipsis {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* Ensure consistent card heights */
+.card-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.card-content > *:last-child {
+  margin-top: auto;
+}
+
+/* Responsive card sizing */
+@media (max-width: 640px) {
+  .card-container {
+    max-width: 100%;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 768px) {
+  .card-container {
+    max-width: 20rem; /* 320px */
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .card-container {
+    max-width: 22rem; /* 352px */
+  }
+}
+
+@media (min-width: 1025px) {
+  .card-container {
+    max-width: 24rem; /* 384px */
+  }
+}
+
+/* Improved grid responsiveness */
+.responsive-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  align-items: start;
+}
+
+/* Card hover effects optimization */
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover:hover {
+  transform: translateY(-0.5rem);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+/* Image aspect ratio preservation */
+.aspect-preserve {
+  aspect-ratio: 4/3;
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+}
